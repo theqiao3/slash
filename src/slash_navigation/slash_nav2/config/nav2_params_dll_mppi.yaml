@@ -1,0 +1,385 @@
+# Nav2 参数配置文件 - 使用DLL定位（无AMCL）
+# 此配置文件移除了AMCL相关配置，使用DLL进行定位
+
+# 注意：此文件不包含amcl配置，因为使用DLL替代
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: False
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odometry
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    plugin_lib_names:
+    - nav2_compute_path_to_pose_action_bt_node
+    - nav2_compute_path_through_poses_action_bt_node
+    - nav2_follow_path_action_bt_node
+    - nav2_back_up_action_bt_node
+    - nav2_spin_action_bt_node
+    - nav2_wait_action_bt_node
+    - nav2_clear_costmap_service_bt_node
+    - nav2_is_stuck_condition_bt_node
+    - nav2_goal_reached_condition_bt_node
+    - nav2_goal_updated_condition_bt_node
+    - nav2_initial_pose_received_condition_bt_node
+    - nav2_reinitialize_global_localization_service_bt_node
+    - nav2_rate_controller_bt_node
+    - nav2_distance_controller_bt_node
+    - nav2_speed_controller_bt_node
+    - nav2_truncate_path_action_bt_node
+    - nav2_goal_updater_node_bt_node
+    - nav2_recovery_node_bt_node
+    - nav2_pipeline_sequence_bt_node
+    - nav2_round_robin_node_bt_node
+    - nav2_transform_available_condition_bt_node
+    - nav2_time_expired_condition_bt_node
+    - nav2_distance_traveled_condition_bt_node
+    - nav2_single_trigger_bt_node
+    - nav2_is_battery_low_condition_bt_node
+    - nav2_navigate_through_poses_action_bt_node
+    - nav2_navigate_to_pose_action_bt_node
+    - nav2_remove_passed_goals_action_bt_node
+    - nav2_planner_selector_bt_node
+    - nav2_controller_selector_bt_node
+    - nav2_goal_checker_selector_bt_node
+
+bt_navigator_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+controller_server:
+  ros__parameters:
+    use_sim_time: False
+    global_frame: map
+    odom_frame: odom
+    odom_topic: /odometry
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001  # 为阿克曼转向减小
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    publish_local_plan: true
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.3
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 56
+      model_dt: 0.05
+      batch_size: 2000
+      vx_std: 0.2
+      vy_std: 0.2
+      wz_std: 0.4
+      vx_max: 1.5
+      vx_min: -0.35
+      vy_max: 0.0
+      wz_max: 1.0
+      iteration_count: 1
+      prune_distance: 1.7
+      transform_tolerance: 0.1
+      temperature: 0.3
+      gamma: 0.015
+      motion_model: "Ackermann"
+      visualize: false
+      reset_period: 1.0 # (only in Humble)
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+      AckermannConstrains:
+        min_turning_r: 0.85
+      critics: ["ConstraintCritic", "ObstaclesCritic", "GoalCritic", "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic", "PathAngleCritic", "PreferForwardCritic"]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.0
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.4
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.4
+      ObstaclesCritic:
+        enabled: true
+        cost_power: 1
+        repulsion_weight: 1.5
+        critical_weight: 20.0
+        consider_footprint: false
+        collision_cost: 10000.0
+        collision_margin_distance: 0.1
+        near_goal_distance: 0.5
+        inflation_radius: 0.35 # (only in Humble)
+        cost_scaling_factor: 5.0 # (only in Humble)
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 7.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.40
+        offset_from_furthest: 20
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 0.6
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.40
+        max_angle_to_furthest: 1.0
+      # TwirlingCritic:
+      #   enabled: true
+      #   twirling_cost_power: 1
+      #   twirling_cost_weight: 10.0
+
+controller_server_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 10.0
+      publish_frequency: 5.0
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: False
+      rolling_window: true
+      width: 4
+      height: 4
+      resolution: 0.05
+      robot_radius: 0.3
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          inf_is_valid: true
+          data_type: "LaserScan"
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 2.5
+        inflation_radius: 0.2
+      always_send_full_costmap: true
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 2.0
+      publish_frequency: 2.0
+      global_frame: map
+      robot_base_frame: base_link
+      use_sim_time: False
+      robot_radius: 0.3
+      resolution: 0.05
+      track_unknown_space: true
+      plugins: ["static_layer", "stvl_layer", "inflation_layer"]
+      stvl_layer:
+        plugin: "spatio_temporal_voxel_layer/SpatioTemporalVoxelLayer"
+        enabled:                  true
+        voxel_decay:              0.5
+        decay_model:              0
+        voxel_size:               0.05
+        track_unknown_space:      true
+        mark_threshold:           0
+        update_footprint_enabled: true
+        combination_method:       1
+        origin_z:                 0.0
+        publish_voxel_map:        true
+        transform_tolerance:      0.2
+        mapping_mode:             false
+        map_save_duration:        60.0
+        observation_sources:      livox_mark livox_clear
+        livox_mark:
+          data_type: PointCloud2
+          topic: /segmentation/obstacle
+          marking: true
+          clearing: false
+          obstacle_range: 3.0
+          min_obstacle_height: 0.2
+          max_obstacle_height: 2.0
+          expected_update_rate: 0.0
+          observation_persistence: 0.0
+          inf_is_valid: false
+          filter: "voxel"
+          voxel_min_points: 0
+          clear_after_reading: true
+        livox_clear:
+          enabled: true
+          data_type: PointCloud2
+          topic: /segmentation/obstacle
+          marking: false
+          clearing: true
+          max_z: 8.0
+          min_z: 1.0
+          vertical_fov_angle: 1.029
+          vertical_fov_padding: 0.05
+          horizontal_fov_angle: 6.29
+          decay_acceleration: 5.0
+          model_type: 1
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        footprint_clearing_enabled: True
+        map_subscribe_transient_local: True
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.2
+      always_send_full_costmap: True
+
+map_server:
+  ros__parameters:
+    use_sim_time: False
+    yaml_filename: "map/test1.yaml"
+    frame_id: map
+
+map_saver:
+  ros__parameters:
+    use_sim_time: False
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 1.0
+    use_sim_time: False
+    planner_plugins: ["GridBased"]
+    GridBased:
+      plugin: "nav2_smac_planner/SmacPlanner2D"
+      tolerance: 0.5
+      allow_unknown: true
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      motion_model_for_search: "DUBIN"
+      cost_travel_multiplier: 2.0
+      angle_quantization_bins: 64
+      minimum_turning_radius: 0.85
+      reverse_penalty: 2.0
+      change_direction_penalty: 0.5
+      non_straight_penalty: 1.2
+      cost_penalty: 2.0
+
+planner_server_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+recoveries_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 2.0
+    recovery_plugins: ["wait", "backup"]
+    wait:
+      plugin: "nav2_recoveries/Wait"
+      wait_duration: 2.0
+    backup:
+      plugin: "nav2_recoveries/BackUp"
+      speed: 0.3
+      acceleration: 0.1
+      distance: 0.5
+    global_frame: lidar_odom
+    robot_base_frame: base_link
+    transform_timeout: 0.1
+    use_sim_time: False
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 0.5
+    min_rotational_vel: 0.1
+    rotational_acc_lim: 0.2
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [3.0, 0.0, 0.5]
+    min_velocity: [-1.0, 0.0, -0.5]
+    deadband_velocity: [0.15, 0.0, 0.0]
+    velocity_timeout: 1.0
+    max_accel: [0.8, 0.0, 0.4]
+    max_decel: [-0.8, 0.0, -0.4]
+    odom_topic: "/odometry"
+    odom_duration: 0.1
+
+robot_state_publisher:
+  ros__parameters:
+    use_sim_time: False
+
+# ==================== DLL定位参数 ====================
+# DLL节点参数（可以在launch文件中覆盖）
+dll_node:
+  ros__parameters:
+    use_sim_time: False
+    # 地图配置
+    map_path: ""  # 在launch中设置
+    global_frame_id: "map"
+    
+    # 点云输入
+    in_cloud: "/livox/lidar/pointcloud_filtered"
+    
+    # 坐标系
+    base_frame_id: "base_link"
+    odom_frame_id: "lidar_odom"
+    
+    # 初始位姿
+    initial_x: 0.0
+    initial_y: 0.0
+    initial_z: 0.0
+    initial_a: 0.0
+    initial_z_offset: 0.0
+    
+    # IMU配置
+    use_imu: false
+    use_yaw_increments: false
+    
+    # 更新参数
+    update_rate: 10.0
+    update_min_d: 0.1
+    update_min_a: 0.1
+    update_min_time: 1.0
+    
+    # 配准方法: 1=DLL(基于优化), 2=NDT, 3=ICP
+    align_method: 1
+    
+    # 求解器参数
+    solver_max_iter: 75
+    solver_max_threads: 8
+    
+    # 可视化
+    publish_point_cloud: true
+    publish_point_cloud_rate: 0.2
+    publish_grid_slice: 0.3
+    publish_grid_slice_rate: 0.2

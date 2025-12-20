@@ -1,0 +1,14 @@
+grid_map_visualizer:
+  ros__parameters:
+    grid_map_topic: /grid_map
+    grid_map_visualizations: [elevation_points, slope_grid]
+    elevation_points:
+      type: point_cloud
+      params:
+        layer: elevation
+    slope_grid:
+      type: occupancy_grid
+      params:
+        layer: slope
+        data_min: 0.0
+        data_max: 1.57  # ~90度

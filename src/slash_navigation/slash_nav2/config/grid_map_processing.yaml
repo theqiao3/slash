@@ -1,0 +1,35 @@
+grid_map_processor:
+  ros__parameters:
+    pointcloud_topic: "/livox/lidar/pointcloud"  # 请根据实际情况修改点云话题
+    map_frame_id: "map"
+    base_frame_id: "base_link"
+    integration_time: 2.0
+    point_min_dist: 0.5
+    point_max_dist: 10.0
+    point_min_z: -1.0
+    point_max_z: 2.0
+
+    filters:
+      filter1:  # Fill holes in the map with inpainting.
+        name: inpaint
+        type: gridMapCv/InpaintFilter
+        params:
+          input_layer: elevation
+          output_layer: elevation_inpainted
+          radius: 0.1
+
+      filter2:  # Compute surface normals.
+        name: surface_normals
+        type: gridMapFilters/NormalVectorsFilter
+        params:
+          input_layer: elevation_inpainted
+          output_layers_prefix: normal_vectors_
+          radius: 0.2
+          normal_vector_positive_axis: z
+
+      filter3:  # Compute slope from surface normal.
+        name: slope
+        type: gridMapFilters/MathExpressionFilter
+        params:
+          output_layer: slope
+          expression: acos(normal_vectors_z)

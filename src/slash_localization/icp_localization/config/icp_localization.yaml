@@ -1,0 +1,35 @@
+icp_localization:
+  ros__parameters:
+    # Frames
+    odom_frame: "odom"
+    base_frame: "base_footprint"
+    map_frame: "map"
+    lidar_frame: "livox_frame"
+    
+    # Topics
+    lidar_topic: "/livox/lidar/pointcloud_filtered"  # PointCloud2 topic from LiDAR
+    odom_topic: "/odometry/filtered"
+    
+    # Map
+    # 使用相对路径以提高可移植性；通常由 launch 文件的参数覆盖。
+    pcd_map_path: "src/slash_navigation/slash_nav2/PCD/test1.pcd"
+    
+    # ICP Parameters
+    voxel_leaf_size: 0.3
+    map_voxel_leaf_size: 0.3
+    icp_max_correspondence_distance: 1.5
+    icp_max_iterations: 50
+    icp_transformation_epsilon: 1e-8
+    icp_euclidean_fitness_epsilon: 1e-6
+    icp_ransac_outlier_threshold: 0.1
+    
+    # Localization Logic
+    min_scan_range: 0.5
+    max_scan_range: 100.0
+    local_map_radius: 50.0
+    
+    transform_publish_rate: 20.0
+    map_publish_rate: 0.1
+    
+    fitness_score_threshold: 0.5
+    use_initial_pose: true

@@ -35,7 +35,7 @@ X86 (N100)
     ps：--symlink-instal方便调试参数文件不用二次编译，
         --packages-select编译指定包
 ## 框架图
-![功能包流程图](image/nav2_optimized.png)
+![功能包流程图](image/MID360_NAV.png)
 ## 概述
 
 本仓库实现了基于ROS2 Humble的机器人导航系统，适用于Ubuntu 22.04环境。系统集成了多种定位算法、规划算法和感知模块，支持多种传感器输入和导航模式。

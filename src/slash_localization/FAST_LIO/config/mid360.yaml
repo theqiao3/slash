@@ -7,8 +7,8 @@
         filter_size_map: 0.5
         cube_side_length: 1000.0
         runtime_pos_log_enable: false
-        # 使用相对路径，建议在 launch 中以 package 路径替换为绝对路径
-        map_file_path: "src/slash_navigation/slash_nav2/PCD/test1.pcd"
+        # 使用绝对路径以确保在任何目录下运行都能成功保存
+        map_file_path: "/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/PCD/test1.pcd"
 
         common:
             lid_topic:  "/livox/lidar"

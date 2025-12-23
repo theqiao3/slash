@@ -12,7 +12,8 @@ icp_localization:
     
     # Map
     # 使用相对路径以提高可移植性；通常由 launch 文件的参数覆盖。
-    pcd_map_path: "src/slash_navigation/slash_nav2/PCD/test1.pcd"
+    # pcd_map_path: "src/slash/src/slash_navigation/slash_nav2/PCD/RMUL.pcd"
+    pcd_map_path: "src/slash/src/slash_navigation/slash_nav2/PCD/test1.pcd"
     
     # ICP Parameters
     voxel_leaf_size: 0.3

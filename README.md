@@ -105,12 +105,16 @@ octmap建立（使用dll定位时启用）：ros2 run octomap_server octomap_ser
 地图保存：ros2 service call /map_save std_srvs/srv/Trigger "{}"
 
 slam_toolbox存图：ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph \
-  "{filename: '/home/tianbot/slash_ws/src/slash_navigation/slash_nav2/map/test1'}"
+  "{filename: '/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/map/test1'}"  ##保存路径需根据自己目录修改
+  
+pcd转栅格：cd /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/scripts
+	python3 pcd_to_pgm.py /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/PCD/test1.pcd /home/tianbot/slash_ws/src/slash_navigation/slash_nav2/map/test1 --resolution 0.05 --height-min 0.01 --height-max 1.5
 
-pcd转栅格（可选）：cd /home/tianbot/slash_ws/src/slash_navigation/slash_nav2/scripts
-    python3 pcd_to_pgm.py /home/tianbot/slash_ws/src/slash_navigation/slash_nav2/PCD/test1.pcd /home/tianbot/slash_ws/src/slash_navigation/slash_nav2/map/test1 --resolution 0.05 --height-min 0.01 --height-max 1.5
+# 保存为.bt格式
+ros2 run octomap_server octomap_saver_node     --ros-args -p octomap_path:=/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_localization/dll/maps/test1.bt
 
-保存为.bt格式（octmap建图时使用）： ros2 run octomap_server octomap_saver_node     --ros-args -p octomap_path:=/home/tianbot/slash_ws/src/slash_localization/dll/maps/test1.bt
+# 或保存为.ot格式（完整概率信息）
+ros2 run octomap_server octomap_saver_node     --ros-args -p octomap_path:=/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_localization/dll/maps/test1.ot
 
 # 建图后导航
 ros2 launch tianracer_bringup tianracer_bringup.launch.py

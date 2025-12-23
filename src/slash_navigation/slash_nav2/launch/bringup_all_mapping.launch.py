@@ -115,30 +115,6 @@ def generate_launch_description():
         output='screen'
     )
     
-    # ==================== 建图提示信息 ====================
-    mapping_info_node = Node(
-        package='ros2_common_interfaces',
-        executable='echo',
-        name='mapping_info',
-        output='screen',
-        arguments=[
-            "echo '========================================';",
-            "echo 'SLAM Toolbox Mapping Started!';",
-            "echo '========================================';",
-            "echo '';",
-            "echo 'TF Chain: map -> lidar_odom -> base_link';",
-            "echo '';",
-            "echo 'After mapping is complete, save the map with:';",
-            "echo '';",
-            "echo 'ros2 service call /slam_toolbox/serialize_map \\';",
-            "echo '  slam_toolbox/srv/SerializePoseGraph \\';",
-            "echo '  \"{filename: \\'/home/tianbot/slash_ws/src/slash_navigation/slash_nav2/map/YOUR_MAP_NAME\\'}\"';",
-            "echo '';",
-            "echo 'Then use bringup_with_slam_toolbox.launch.py for localization';",
-            "echo '========================================';",
-        ]
-    )
-    
     # ==================== 声明参数 ====================
     ld.add_action(DeclareLaunchArgument(
         'enable_rviz',
@@ -155,4 +131,11 @@ def generate_launch_description():
     # ==================== 添加启动节点 ====================
     ld.add_action(rviz_node)
     
+    # 添加提示信息
+    ld.add_action(LogInfo(msg="========================================"))
+    ld.add_action(LogInfo(msg="SLAM Toolbox Mapping Started!"))
+    ld.add_action(LogInfo(msg="TF Chain: map -> lidar_odom -> base_link"))
+    ld.add_action(LogInfo(msg="To save PCD map from FAST_LIO: ros2 service call /map_save std_srvs/srv/Trigger \"{}\""))
+    ld.add_action(LogInfo(msg="========================================"))
+
     return ld

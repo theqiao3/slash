@@ -10,6 +10,7 @@
 #include <utility>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/passthrough.h>
 
 #include "grid_map_demos/PCDToGridmapDemo.hpp"
 namespace grid_map_demos
@@ -53,18 +54,36 @@ bool PCDToGridmapDemo::readParameters()
     this->declare_parameter("filter_chain_parameter_name", std::string("filters"));
     this->declare_parameter("map_frame_id", std::string());
     this->declare_parameter("pcd_file_path", std::string());
+    this->declare_parameter("point_min_z", -100.0);
+    this->declare_parameter("point_max_z", 100.0);
 
+    double point_min_z, point_max_z;
     this->get_parameter("config_file_path", configFilePath_);
     this->get_parameter("filter_chain_parameter_name", filterChainParametersName_);
     this->get_parameter("map_frame_id", mapFrameId_);
     this->get_parameter("pcd_file_path", PCDFilePath_);
+    this->get_parameter("point_min_z", point_min_z);
+    this->get_parameter("point_max_z", point_max_z);
 
     gridMapPclLoader.loadParameters(configFilePath_);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::io::loadPCDFile(PCDFilePath_, *cloud);
-    cloud_src = cloud;
-    // pcl::fromPCLPointCloud2(cloudBlob, *cloud_src);
-    // std::cout<<"4"<<std::endl;
+    if (pcl::io::loadPCDFile(PCDFilePath_, *cloud) == -1) {
+        RCLCPP_ERROR(this->get_logger(), "Could not read PCD file: %s", PCDFilePath_.c_str());
+        return false;
+    }
+
+    // Apply PassThrough filter for Z axis
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pass.setInputCloud(cloud);
+    pass.setFilterFieldName("z");
+    pass.setFilterLimits(point_min_z, point_max_z);
+    pass.filter(*cloud_filtered);
+
+    cloud_src = cloud_filtered;
+    RCLCPP_INFO(this->get_logger(), "Loaded and filtered PCD with %zu points (original: %zu)", 
+                cloud_src->size(), cloud->size());
+    
     return true;
 }
 

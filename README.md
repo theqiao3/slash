@@ -108,7 +108,7 @@ slam_toolbox存图：ros2 service call /slam_toolbox/serialize_map slam_toolbox/
   "{filename: '/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/map/test1'}"  ##保存路径需根据自己目录修改
   
 pcd转栅格：cd /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/scripts
-	python3 pcd_to_pgm.py /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/PCD/test1.pcd /home/tianbot/slash_ws/src/slash_navigation/slash_nav2/map/test1 --resolution 0.05 --height-min 0.01 --height-max 1.5
+	python3 pcd_to_pgm_slope.py /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/PCD/test1.pcd /home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_navigation/slash_nav2/map/test2 --resolution 0.05 --height-min 0.01 --height-max 1.5 --max-slope 0.5
 
 # 保存为.bt格式
 ros2 run octomap_server octomap_saver_node     --ros-args -p octomap_path:=/home/tianbot/MID360_nav_humble_ws/src/slash/src/slash_localization/dll/maps/test1.bt
@@ -127,8 +127,8 @@ ros2 launch slash_nav2 bringup_all.launch.py
     # 选择一个定位方案（取消注释其中一行）:
             #("slash_nav2", "bringup_real.launch.py"),            # 官方 AMCL
             #("slash_nav2", "bringup_with_dll.launch.py"),        # DLL 3D定位
-            ("slash_nav2", "bringup_with_slam_toolbox.launch.py"), # SLAM Toolbox 定位
-            #("slash_nav2", "bringup_gridmap_toolbox.launch.py"), # Grid Map + SLAM Toolbox  
+            #("slash_nav2", "bringup_with_slam_toolbox.launch.py"), # SLAM Toolbox 定位
+            ("slash_nav2", "bringup_gridmap_toolbox.launch.py"), # Grid Map + SLAM Toolbox  
 
 ### 单独启动测试 
 ```bash
@@ -172,7 +172,8 @@ ros2 launch pointcloud_to_laserscan pointcloud_to_laserscan_launch.py
 - **特点**: 3D激光雷达直接定位
 - **配准方法**: DLL、NDT、ICP可选
 - **地图格式**: 支持.bt八叉树地图
-
+![dll图](image/dll_1.png)
+![dll图](image/dll_2.png)
 #### SLAM Toolbox
 - **功能**: 基于序列化地图的定位模式
 - **地图格式**: .posegraph序列化地图 + .data数据文件
@@ -199,7 +200,7 @@ ros2 launch pointcloud_to_laserscan pointcloud_to_laserscan_launch.py
   - 高效地图重定位
   - Eigen数据类型
 - **应用**: 地形导航、表面法向量、通行性等
-
+![2.5D 高程图](image/grid_map.png)
 #### Linefit Ground Segmentation
 - **算法**: 基于线拟合的地面分割
 - **应用**: 从点云中分离地面和障碍物
@@ -216,15 +217,17 @@ ros2 launch pointcloud_to_laserscan pointcloud_to_laserscan_launch.py
 ## 配置说明
 
 ### 参数文件
-- 主配置文件: `slash_nav2/config/nav2_params.yaml`
+- 主配置文件: `slash_nav2/config/nav2_params_gridmap.yaml` #方案Grid Map + SLAM Toolbox  
 
 - 包含定位、规划、控制等参数
 
 ### 地图文件
 - 2D地图: `slash_nav2/map/test1.yaml`
+![2Dpgm图](image/2d_pgm.png)
 - 3Doctmap地图: `dll/maps/test1.bt`
+![3Doctmap图](image/dll_octomap.png)
 - 点云地图: `slash_nav2/PCD/test1.pcd`
-
+![3Dpcd图](image/pcd.png)
 ### RViz配置
 - 配置文件: `slash_nav2/rviz/nav2.rviz`
 
@@ -234,20 +237,6 @@ ros2 launch pointcloud_to_laserscan pointcloud_to_laserscan_launch.py
 - Ubuntu 22.04
 - ROS2 Humble
 - Livox SDK2
-
-### ROS包依赖
-- navigation2
-- slam_toolbox
-- teb_local_planner
-- grid_map系列包
-
-## 注意事项
-
-1. 确保Livox SDK2已正确安装
-2. 根据硬件配置选择合适的定位方案
-3. 地图文件路径需要根据实际情况调整
-4. PCD可视化功能默认启用，可通过参数控制
-5. 速度校正节点可按需启用
 
 ### 日志分析
 - 使用`ros2 launch`的`--log-level`参数控制日志级别

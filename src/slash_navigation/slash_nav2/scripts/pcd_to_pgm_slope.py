@@ -265,42 +265,63 @@ def pcd_to_2d_grid(points, resolution=0.05, height_min=None, height_max=None,
         print(f"  最大台阶高度: {max_step_height:.2f} m")
         
         # 计算局部地面高度（使用最小高度网格的平滑版本）
-        from scipy.ndimage import gaussian_filter, sobel
+        from scipy.ndimage import gaussian_filter, sobel, maximum_filter, minimum_filter, binary_dilation, grey_closing, binary_closing
         
-        # 使用高斯滤波平滑地面高度（减少噪声）
-        smooth_ground_height = gaussian_filter(min_height_grid, sigma=2.0)
+        # 1. 预处理：填补稀疏点云造成的空洞
+        # 稀疏点云会导致栅格中间有0值的“深坑”，这会产生巨大的虚假坡度
+        # 使用灰度闭运算填补这些小坑（假设周围是平滑地形）
+        # size=5 对应约 5*resolution (例如 0.25m) 的填补范围
+        filled_height_grid = grey_closing(min_height_grid, size=5)
+        
+        # 2. 扩展有效点区域
+        # 同样，稀疏点云会导致 has_points 也是断断续续的
+        # 使用二值闭运算将断开的点连接起来，使坡面连通
+        connected_points_mask = binary_closing(has_points, structure=np.ones((3,3)))
+        
+        # 3. 平滑地形
+        # 使用填补后的高度图进行高斯平滑（减少噪声，增强坡面连通性）
+        # 增大 sigma 以平滑整个坡面，使坡度计算更连续
+        smooth_ground_height = gaussian_filter(filled_height_grid, sigma=1.5)
         
         # 计算坡度（使用Sobel算子）
         grad_x = sobel(smooth_ground_height, axis=1) / resolution
         grad_y = sobel(smooth_ground_height, axis=0) / resolution
         slope_magnitude = np.sqrt(grad_x**2 + grad_y**2)
         
-        # 计算高度突变（栅格内的最大-最小高度差）
-        height_variance = max_height_grid - min_height_grid
+        # 计算局部高度极差（形态学梯度），用于检测边缘
+        # 在3x3邻域内计算最大高度差，这比单纯的梯度更能反映地形的陡峭边缘
+        local_max = maximum_filter(smooth_ground_height, size=3)
+        local_min = minimum_filter(smooth_ground_height, size=3)
+        local_height_range = local_max - local_min
+        
+        # 识别陡峭边缘（高度变化剧烈的区域）
+        # 这些通常是斜坡的侧边或台阶
+        # 注意：这里使用 connected_points_mask 确保边缘检测覆盖填补后的区域
+        steep_edges = connected_points_mask & (local_height_range > max_step_height)
+        
+        # 对边缘进行膨胀，将其转换为有一定宽度的不可通过区域
+        # 增加 iterations=2 (约10cm宽度)，确保形成足够厚的"虚拟墙"，防止机器人从坡道边缘掉落
+        steep_edges_dilated = binary_dilation(steep_edges, iterations=2)
         
         # 判断可通行性
-        # 1. 有点的栅格
-        # 2. 高度突变小于阈值（不是陡峭的障碍物）
+        # 1. 在连通后的区域内
+        # 2. 局部高度差小于阈值（不是陡峭边缘）
         # 3. 局部坡度小于最大坡度（缓坡可通行）
+        # 4. 且不属于膨胀后的边缘区域（安全余量）
         traversable_mask = (
-            has_points & 
-            (height_variance < max_step_height) & 
-            (slope_magnitude < max_slope)
+            connected_points_mask & 
+            (local_height_range < max_step_height) & 
+            (slope_magnitude < max_slope) &
+            ~steep_edges_dilated
         )
         
-        # 不可通行的区域标记为障碍物
-        obstacle_mask = has_points & ~traversable_mask
+        # 障碍物定义：
+        # 1. 在连通区域内但不可通行的区域（太陡或太乱）
+        # 2. 或者是识别出的陡峭边缘区域（包含膨胀的安全边界）
+        obstacle_mask = (connected_points_mask & ~traversable_mask) | steep_edges_dilated
         
-        # 额外检查：相邻栅格的高度差（防止遗漏的陡峭区域）
-        for dy in [-1, 0, 1]:
-            for dx in [-1, 0, 1]:
-                if dx == 0 and dy == 0:
-                    continue
-                shifted_height = np.roll(np.roll(mean_height_grid, dy, axis=0), dx, axis=1)
-                height_diff = np.abs(mean_height_grid - shifted_height)
-                # 如果与相邻栅格高度差过大，标记为障碍物
-                steep_edge = has_points & (height_diff > max_step_height)
-                obstacle_mask |= steep_edge
+        # 更新 has_points 为连通后的掩码，以便后续统计正确
+        has_points = connected_points_mask
         
         print(f"\n斜坡分析统计:")
         print(f"  总栅格数: {has_points.sum():7d}")

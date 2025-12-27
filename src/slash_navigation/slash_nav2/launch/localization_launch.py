@@ -17,7 +17,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable, TimerAction, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import LoadComposableNodes
@@ -44,16 +44,19 @@ def generate_launch_description():
 
     # 使用 SLAM Toolbox 定位模式替代 AMCL
     # lifecycle_nodes = ['map_server']  # 仅 map_server (FAST_LIO 模式)
-    #lifecycle_nodes = ['map_server', 'slam_toolbox']  # SLAM Toolbox 定位模式
-    lifecycle_nodes = ['map_server']
+    lifecycle_nodes = ['map_server', 'slam_toolbox']  # SLAM Toolbox 定位模式
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
     # https://github.com/ros/geometry2/issues/32
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
+    map_server_remappings = [('/tf', 'tf'),
+                             ('/tf_static', 'tf_static')]
+    
+    slam_toolbox_remappings = [('/tf', 'tf'),
+                               ('/tf_static', 'tf_static'),
+                               ('/map', '/slam_map')]
 
     # Create our own temporary YAML files that include substitutions
     # yaml_filename: 给 map_server 使用的 2D yaml 地图
@@ -130,7 +133,7 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings),
+                remappings=map_server_remappings),
             # SLAM Toolbox 定位模式节点
             Node(
                 package='slam_toolbox',
@@ -141,7 +144,7 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings),
+                remappings=slam_toolbox_remappings),
             # AMCL节点已屏蔽
             # Node(
             #     package='nav2_amcl',
@@ -174,14 +177,14 @@ def generate_launch_description():
                 plugin='nav2_map_server::MapServer',
                 name='map_server',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=map_server_remappings),
             # SLAM Toolbox 定位模式 (组合节点)
             ComposableNode(
                 package='slam_toolbox',
                 plugin='slam_toolbox::LocalizationSlamToolbox',
                 name='slam_toolbox',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=slam_toolbox_remappings),
             # AMCL节点已屏蔽，使用SLAM Toolbox进行定位
             # ComposableNode(
             #     package='nav2_amcl',
@@ -220,5 +223,37 @@ def generate_launch_description():
     # Add the actions to launch all of the localiztion nodes
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
+
+    # 1. 地图与定位对齐变换：将 SLAM 系统 (map_slam) 对齐到 静态地图 (map)
+    # 解决 PCD 静态地图与 SLAM 地图之间的角度和位移偏差，同时解决 odom 陷入地下 (-0.0315) 的问题
+    # 基于调试值 [0.55, -0.2, 0, 0.3] 的逆变换计算得出：
+    # x: -0.466, y: 0.353, z: 0.0315, yaw: -0.3
+    map_to_map_slam_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_map_slam_broker',
+        # arguments=['-0.466', '0.353', '0.0315', '-0.3', '0', '0', 'map', 'map_slam']
+        arguments=['0', '0', '0', '0', '0', '0', 'map', 'map_slam']
+    )
+    ld.add_action(map_to_map_slam_tf)
+
+    # # 强制激活生命周期节点 (针对 lifecycle_manager 可能失效的情况)
+    force_activate_nodes = GroupAction([
+        ExecuteProcess(
+            cmd=['ros2', 'lifecycle', 'set', '/map_server', 'configure'],
+            output='screen'),
+        ExecuteProcess(
+            cmd=['ros2', 'lifecycle', 'set', '/map_server', 'activate'],
+            output='screen'),
+        # ExecuteProcess(
+        #     cmd=['ros2', 'lifecycle', 'set', '/slam_toolbox', 'configure'],
+        #     output='screen'),
+        # ExecuteProcess(
+        #     cmd=['ros2', 'lifecycle', 'set', '/slam_toolbox', 'activate'],
+        #     output='screen'),
+    ])
+    
+    # 延迟 5 秒执行，确保节点已经完全启动
+    ld.add_action(TimerAction(period=5.0, actions=[force_activate_nodes]))
 
     return ld

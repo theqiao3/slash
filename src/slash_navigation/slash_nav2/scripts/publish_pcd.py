@@ -8,7 +8,7 @@ PCD点云发布节点 - 将PCD文件发布为ROS 2 PointCloud2 消息
 参数:
     --pcd-file: PCD文件路径（必需）
     --topic: 发布话题名称，默认 /pcd_map
-    --frame-id: 坐标系，默认 lidar_odom
+    --frame-id: 坐标系，默认 map
     --rate: 发布频率（Hz），默认 1
     --publish-once: 只发布一次后退出
     --roll: 绕X轴旋转角度（度），用于纠正点云倾斜，默认 0
@@ -37,6 +37,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Header
+from rclpy.qos import QoSProfile, DurabilityPolicy
 import argparse
 import numpy as np
 from pathlib import Path
@@ -58,7 +59,7 @@ except ImportError:
 class PCDPublisher(Node):
     """PCD文件发布节点"""
     
-    def __init__(self, pcd_file, topic='/pcd_map', frame_id='lidar_odom', 
+    def __init__(self, pcd_file, topic='/pcd_map', frame_id='map', 
                  rate=1.0, publish_once=False, roll=0.0, pitch=0.0, yaw=0.0):
         super().__init__('pcd_publisher')
         
@@ -72,8 +73,10 @@ class PCDPublisher(Node):
         self.pitch = np.radians(pitch)
         self.yaw = np.radians(yaw)
         
-        # 发布器
-        self.publisher = self.create_publisher(PointCloud2, topic, 10)
+        # 发布器: 使用 transient_local durability 以支持 late subscribers（RViz 等）
+        qos = QoSProfile(depth=1)
+        qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
+        self.publisher = self.create_publisher(PointCloud2, topic, qos_profile=qos)
         
         # 定时器（发布频率）
         self.timer = self.create_timer(1.0 / rate, self.timer_callback)
@@ -248,7 +251,7 @@ def main():
     )
     parser.add_argument('--pcd-file', required=True, help='PCD文件路径（必需）')
     parser.add_argument('--topic', default='/pcd_map', help='发布话题，默认 /pcd_map')
-    parser.add_argument('--frame-id', default='lidar_odom', help='坐标系，默认 lidar_odom')
+    parser.add_argument('--frame-id', default='map', help='坐标系，默认 map')
     parser.add_argument('--rate', type=float, default=1.0, help='发布频率（Hz），默认1')
     parser.add_argument('--publish-once', action='store_true', help='只发布一次后退出')
     parser.add_argument('--roll', type=float, default=0.0, 
@@ -258,7 +261,8 @@ def main():
     parser.add_argument('--yaw', type=float, default=0.0, 
                        help='绕Z轴旋转角度（度），默认0')
     
-    args = parser.parse_args()
+    # 允许忽略 ros2 launch 注入的 ROS-specific args（例如 --ros-args）
+    args, _ = parser.parse_known_args()
     
     rclpy.init()
     

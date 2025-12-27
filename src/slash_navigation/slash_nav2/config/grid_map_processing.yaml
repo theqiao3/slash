@@ -6,7 +6,7 @@ grid_map_processor:
     integration_time: 2.0
     point_min_dist: 0.5
     point_max_dist: 10.0
-    point_min_z: -1.0
+    point_min_z: 0.05
     point_max_z: 2.0
 
     filters:

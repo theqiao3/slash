@@ -34,8 +34,8 @@ def generate_launch_description():
         # 选择一个定位方案（取消注释其中一行）:
         #("slash_nav2", "bringup_real.launch.py"),            # 官方 AMCL
         #("slash_nav2", "bringup_with_dll.launch.py"),        # DLL 3D定位
-        ("slash_nav2", "bringup_with_slam_toolbox.launch.py"), # SLAM Toolbox 定位
-        #("slash_nav2", "bringup_gridmap_toolbox.launch.py"), # Grid Map + SLAM Toolbox   
+        #("slash_nav2", "bringup_with_slam_toolbox.launch.py"), # SLAM Toolbox 定位
+        ("slash_nav2", "bringup_gridmap_toolbox.launch.py"), # Grid Map + SLAM Toolbox   
     ]
 
     for pkg, lf in launches:

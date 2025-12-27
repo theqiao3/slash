@@ -40,6 +40,7 @@ def generate_launch_description():
     
     # Grid Map 配置文件路径
     grid_map_processing_config = os.path.join(slash_nav2_dir, 'config', 'grid_map_processing.yaml')
+    pcd_grid_map_processing_config = os.path.join(slash_nav2_dir, 'config', 'pcd_grid_map_processing.yaml')
     grid_map_visualization_config = os.path.join(slash_nav2_dir, 'config', 'grid_map_visualization.yaml')
     
     # PCL 配置文件路径 (使用 grid_map_demos 的默认配置)
@@ -47,9 +48,8 @@ def generate_launch_description():
     pcl_config = os.path.join(grid_map_demos_dir, 'config', 'realtime_pcl_grid_config.yaml')
     
     # 默认地图路径
-    default_map_yaml = os.path.join(slash_nav2_dir, 'map', 'test1.yaml')
+    default_map_yaml = os.path.join(slash_nav2_dir, 'map', 'test2.yaml')
     # 注意：如果没有 .posegraph 文件，需要先用 SLAM Toolbox 建图
-    # 可以使用 RMUC.posegraph 作为示例（如果存在）
     default_map_posegraph = os.path.join(slash_nav2_dir, 'map', 'test1')  # 不带扩展名
     
     # PCD点云地图参数 - 使用包内相对路径（更便于移植）
@@ -116,6 +116,24 @@ def generate_launch_description():
         parameters=[grid_map_visualization_config],
         output='screen'
     )
+
+    # PCD Grid Map 处理节点 (从 PCD 加载并生成全局 Grid Map)
+    pcd_grid_map_processor_node = Node(
+        package='grid_map_demos',
+        executable='pcd_to_gridmap_demo',
+        name='pcd_grid_map_processor',
+        parameters=[pcd_grid_map_processing_config,
+                    {
+                    "config_file_path": pcl_config,
+                    "pcd_file_path": pcd_file_path,
+                    "map_frame_id": "map"
+                    }
+                ],
+        remappings=[
+            ("grid_map", "/global_grid_map")
+        ],
+        output='screen'
+    )
     
     
     return LaunchDescription([
@@ -165,6 +183,7 @@ def generate_launch_description():
         # ===== Grid Map =====
         grid_map_processor_node,
         grid_map_visualizer_node,
+        pcd_grid_map_processor_node,
 
         # ===== RViz =====
         rviz_node,

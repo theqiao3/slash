@@ -25,10 +25,19 @@ def generate_launch_description():
     
     # 配置文件路径
     rviz_config_dir = os.path.join(slash_nav2_dir, 'rviz', 'nav2.rviz')
-    nav2_param_path = os.path.join(slash_nav2_dir, 'config', 'nav2_params.yaml')
+    nav2_param_path = os.path.join(slash_nav2_dir, 'config', 'nav2_params_dll_teb.yaml')
+    
+    # Grid Map 配置文件路径
+    grid_map_processing_config = os.path.join(slash_nav2_dir, 'config', 'grid_map_processing.yaml')
+    pcd_grid_map_processing_config = os.path.join(slash_nav2_dir, 'config', 'pcd_grid_map_processing.yaml')
+    grid_map_visualization_config = os.path.join(slash_nav2_dir, 'config', 'grid_map_visualization.yaml')
+    
+    # PCL 配置文件路径 (使用 grid_map_demos 的默认配置)
+    grid_map_demos_dir = get_package_share_directory('grid_map_demos')
+    pcl_config = os.path.join(grid_map_demos_dir, 'config', 'realtime_pcl_grid_config.yaml')
     
     # 默认地图路径
-    default_map_yaml = os.path.join(slash_nav2_dir, 'map', 'test1.yaml')
+    default_map_yaml = os.path.join(slash_nav2_dir, 'map', 'test2.yaml')
     default_map_bt = os.path.join(dll_dir, 'maps', 'test1.bt')
     
     # Launch配置
@@ -48,104 +57,14 @@ def generate_launch_description():
     enable_pcd = LaunchConfiguration('enable_pcd', default='true')
     # 使用包内相对路径，避免硬编码工作区路径
     pcd_file_path = os.path.join(slash_nav2_dir, 'PCD', 'test1.pcd')
-    
-    # ==================== DLL定位节点 ====================
-    dll_node = Node(
-        package='dll',
-        executable='dll_node',
-        name='dll_node',
-        output='log',  # 改为log，不在终端输出INFO信息
-        arguments=['--ros-args', '--log-level', 'warn'],  # 只显示WARN及以上级别
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            # 地图配置
-            'map_path': map_bt,
-            'global_frame_id': 'map',
-            
-            # 点云输入
-            'in_cloud': in_cloud,
-            
-            # 坐标系
-            'base_frame_id': 'base_link',
-            'odom_frame_id': 'lidar_odom',
-            
-            # 初始位姿
-            'initial_x': initial_x,
-            'initial_y': initial_y,
-            'initial_z': initial_z,
-            'initial_a': initial_a,
-            'initial_z_offset': 0.0,
-            
-            # IMU配置
-            'use_imu': True,
-            'use_yaw_increments': False,
-            
-            # 更新参数
-            'update_rate': 10.0,
-            'update_min_d': 0.1,
-            'update_min_a': 0.1,
-            'update_min_time': 1.0,
-            
-            # 配准方法: 1=DLL, 2=NDT, 3=ICP
-            'align_method': 1,
-            
-            # 求解器参数
-            'solver_max_iter': 75,
-            'solver_max_threads': 8,
-            
-            # 可视化
-            'publish_point_cloud': True,
-            'publish_point_cloud_rate': 0.2,
-            'publish_grid_slice': 0.3,
-            'publish_grid_slice_rate': 0.2,
-        }],
-        remappings=[
-            ('initial_pose', '/initialpose'),
-        ]
-    )
-    
-    # ==================== Nav2导航（不包含AMCL） ====================
-    # 使用nav2_bringup但跳过localization部分
-    # 我们需要单独启动各个Nav2组件
-    
-    # Map Server - 仍然需要2D地图用于全局代价地图
-    map_server_node = Node(
-        package='nav2_map_server',
-        executable='map_server',
-        name='map_server',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'yaml_filename': map_yaml,
-        }]
-    )
-    
-    # Lifecycle Manager for map_server
-    lifecycle_manager_map = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_map',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'autostart': True,
-            'node_names': ['map_server']
-        }]
-    )
-    
-    # Nav2 Navigation (不含定位)
-    # nav2_navigation_launch = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(nav2_bringup_dir, 'launch', 'navigation_launch.py')
-    #     ),
-    #     launch_arguments={
-    #         'use_sim_time': use_sim_time,
-    #         'params_file': params_file,
-    #     }.items()
-    # )
+    pcd_file = LaunchConfiguration('pcd_file', default=pcd_file_path)
+
+    # 可视化开关
+    enable_rviz = LaunchConfiguration('enable_rviz', default='true')
     
     # ==================== RViz ====================
     rviz_node = Node(
+        condition=IfCondition(enable_rviz),
         package='rviz2',
         executable='rviz2',
         name='rviz2',
@@ -166,6 +85,47 @@ def generate_launch_description():
         remappings=[
             ('cmd_vel', '/cmd_vel'),
             ('cmd_vel_corrective', '/cmd_vel_corrective')
+        ],
+        output='screen'
+    )
+
+    # ==================== Grid Map Nodes ====================
+    # Grid Map 处理节点 (从点云生成 Grid Map 并计算坡度)
+    grid_map_processor_node = Node(
+        package='grid_map_demos',
+        executable='pointcloud2_to_gridmap_demo',
+        name='grid_map_processor',
+        parameters=[grid_map_processing_config,
+                    {
+                    "config_file_path": pcl_config
+                    }
+                ],
+        output='screen'
+    )
+    
+    # Grid Map 可视化节点
+    grid_map_visualizer_node = Node(
+        package='grid_map_visualization',
+        executable='grid_map_visualization',
+        name='grid_map_visualizer',
+        parameters=[grid_map_visualization_config],
+        output='screen'
+    )
+
+    # PCD Grid Map 处理节点 (从 PCD 加载并生成全局 Grid Map)
+    pcd_grid_map_processor_node = Node(
+        package='grid_map_demos',
+        executable='pcd_to_gridmap_demo',
+        name='pcd_grid_map_processor',
+        parameters=[pcd_grid_map_processing_config,
+                    {
+                    "config_file_path": pcl_config,
+                    "pcd_file_path": pcd_file_path,
+                    "map_frame_id": "map"
+                    }
+                ],
+        remappings=[
+            ("grid_map", "/global_grid_map")
         ],
         output='screen'
     )
@@ -192,37 +152,35 @@ def generate_launch_description():
                              description='Initial yaw angle'),
         DeclareLaunchArgument('enable_pcd', default_value='true',
                              description='Enable PCD visualization'),
+        DeclareLaunchArgument('pcd_file', default_value=pcd_file_path,
+                             description='Path to PCD file for visualization'),
+        DeclareLaunchArgument('enable_rviz', default_value='true',
+                             description='Enable RViz visualization'),
         
-        # ===== 启动节点 =====
-        # DLL定位
-        dll_node,
-        
-        # Map Server
-        map_server_node,
-        lifecycle_manager_map,
-        
-        # Nav2导航
-        #nav2_navigation_launch,
-                # 使用本地修改后的bringup_launch.py（已屏蔽AMCL）
+        # ===== 启动核心导航与定位 =====
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(slash_nav2_dir, 'launch', 'bringup_launch.py')),
-            # 使用 Launch 参数替换原有参数
+                os.path.join(slash_nav2_dir, 'launch', 'bringup_dll_launch.py')),
             launch_arguments={
                 'map': map_yaml,
+                'map_bt': map_bt,
                 'use_sim_time': use_sim_time,
-                'params_file': params_file}.items(),
+                'params_file': params_file,
+                'in_cloud': in_cloud,
+                'initial_x': initial_x,
+                'initial_y': initial_y,
+                'initial_z': initial_z,
+                'initial_a': initial_a,
+                'enable_pcd': enable_pcd,
+                'pcd_file': pcd_file,
+            }.items(),
         ),
-        # PCD可视化
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(slash_nav2_dir, 'launch', 'bringup_real.launch.py')
-            ]),
-        ) if False else GroupAction([]),  # 暂时禁用，避免重复启动
         
-        # 速度校正
-        #vel_corrector_node,
+        # ===== Grid Map =====
+        grid_map_processor_node,
+        grid_map_visualizer_node,
+        pcd_grid_map_processor_node,
         
-        # RViz
+        # ===== RViz =====
         rviz_node,
     ])

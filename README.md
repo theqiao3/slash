@@ -223,7 +223,7 @@ ros2 launch pointcloud_to_laserscan pointcloud_to_laserscan_launch.py
 
 ### 地图文件
 - 2D地图: `slash_nav2/map/test1.yaml`
-![2Dpgm图](image/2d_pgm.png)
+![2Dpgm图](image/2d_map.png)
 - 3Doctmap地图: `dll/maps/test1.bt`
 ![3Doctmap图](image/dll_octomap.png)
 - 点云地图: `slash_nav2/PCD/test1.pcd`

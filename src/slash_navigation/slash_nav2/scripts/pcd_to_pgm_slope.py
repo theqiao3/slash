@@ -68,6 +68,12 @@ try:
 except ImportError:
     HAS_PCL = False
 
+try:
+    from scipy.spatial import cKDTree
+    HAS_CKD = True
+except Exception:
+    HAS_CKD = False
+
 
 def load_pcd_open3d(pcd_path):
     """使用Open3D加载PCD文件"""
@@ -496,6 +502,20 @@ def main():
                        help='最大可通行坡度（默认0.3，约17°）')
     parser.add_argument('--max-step-height', type=float, default=0.2,
                        help='最大可通行台阶高度（米，默认0.2）')
+    # Outlier removal options
+    parser.add_argument('--remove-outliers', action='store_true', default=False,
+                       help='启用离群噪声点去除（在高度过滤前执行）')
+    parser.add_argument('--outlier-method', type=str, default=None,
+                       choices=['statistical', 'radius'],
+                       help="离群点去除方法：'statistical' 使用 Open3D 的统计滤波；'radius' 使用半径邻域计数")
+    parser.add_argument('--outlier-nb-neighbors', type=int, default=20,
+                       help='统计滤波时的邻域大小（statistical）')
+    parser.add_argument('--outlier-std-ratio', type=float, default=2.0,
+                       help='统计滤波的标准差比（statistical）')
+    parser.add_argument('--outlier-radius', type=float, default=0.5,
+                       help='半径方法的邻域半径（米，radius）')
+    parser.add_argument('--outlier-min-neighbors', type=int, default=3,
+                       help='半径方法中一个点被视为非噪声所需的最小邻居数（包括自身）')
     
     args = parser.parse_args()
     
@@ -543,6 +563,46 @@ def main():
     if len(points) == 0:
         print("错误：点云为空")
         sys.exit(1)
+
+    # 可选：去除离群噪声点（在高度过滤之前）
+    if args.remove_outliers:
+        method = args.outlier_method
+        # 自动选择方法：优先 statistical（若 open3d 可用），否则 radius
+        if method is None:
+            method = 'statistical' if HAS_OPEN3D else 'radius'
+
+        def remove_outliers_statistical(pts, nb_neighbors=20, std_ratio=2.0):
+            if not HAS_OPEN3D:
+                print('统计滤波需要 open3d，但未检测到 open3d，跳过统计滤波')
+                return pts
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(pts)
+            cl, ind = pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
+            filtered = np.asarray(cl.points)
+            print(f"统计滤波: 原始点数={len(pts)}, 剔除后点数={len(filtered)}")
+            return filtered
+
+        def remove_outliers_radius(pts, radius=0.5, min_neighbors=3):
+            if not HAS_CKD:
+                print('半径滤波需要 SciPy (cKDTree)，但未检测到，跳过半径滤波')
+                return pts
+            tree = cKDTree(pts)
+            # query_ball_point 返回每个点在半径内的邻居索引列表
+            neighbors = tree.query_ball_point(pts, r=radius)
+            counts = np.array([len(n) for n in neighbors])
+            mask = counts >= min_neighbors
+            filtered = pts[mask]
+            print(f"半径滤波 (r={radius}, min_n={min_neighbors}): 原始点数={len(pts)}, 剔除后点数={len(filtered)}")
+            return filtered
+
+        if method == 'statistical':
+            points = remove_outliers_statistical(points,
+                                                nb_neighbors=args.outlier_nb_neighbors,
+                                                std_ratio=args.outlier_std_ratio)
+        else:
+            points = remove_outliers_radius(points,
+                                           radius=args.outlier_radius,
+                                           min_neighbors=args.outlier_min_neighbors)
     
     # 转换为2D网格
     grid, origin = pcd_to_2d_grid(

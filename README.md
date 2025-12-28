@@ -52,13 +52,13 @@ X86 (N100)
 - **dll**: 3D激光雷达定位算法
 - **FAST_LIO**: 快速LiDAR-惯性里程计，支持多种激光雷达类型
 - **icp_localization**: ICP点云配准定位
-![建图演示](image/建图.gif)
+![建图演示](image/build_map.gif)
 ### slash_navigation (导航模块)
 - **costmap_converter**: 代价地图转换工具
 - **nav2_msg_costmap_plugin**: Nav2代价地图插件
 - **slash_nav2**: 自定义Nav2导航包，包含多种定位方案
 - **teb_local_planner**: 时间弹性带局部规划器
-![导航演示](image/演示2.gif)
+![导航演示](image/test2.gif)
 ### slash_perception (感知模块)
 - **grid_map**: 通用网格地图库，支持多层数据
 - **linefit_ground_segmentation**: 地面分割算法

@@ -19,9 +19,9 @@ def generate_launch_description():
     use_sim_time = launch.substitutions.LaunchConfiguration(
         'use_sim_time', default='false')
     map_yaml_path = launch.substitutions.LaunchConfiguration(
-        'map', default=os.path.join(slash_nav2_dir, 'map', 'test1.yaml'))
+        'map', default=os.path.join(slash_nav2_dir, 'map', 'test2.yaml'))
     nav2_param_path = launch.substitutions.LaunchConfiguration(
-        'params_file', default=os.path.join(slash_nav2_dir, 'config', 'nav2_params.yaml'))
+        'params_file', default=os.path.join(slash_nav2_dir, 'config', 'nav2_params (teb).yaml'))
     
     # PCD点云地图参数 - 使用包内相对路径（更便于移植）
     pcd_file_path = os.path.join(slash_nav2_dir, 'PCD', 'test1.pcd')

@@ -36,7 +36,7 @@ def generate_launch_description():
     
     # 配置文件路径
     rviz_config_dir = os.path.join(slash_nav2_dir, 'rviz', 'nav2.rviz')
-    nav2_param_path = os.path.join(slash_nav2_dir, 'config', 'nav2_params.yaml')
+    nav2_param_path = os.path.join(slash_nav2_dir, 'config', 'nav2_params (teb_slam_toolbox) .yaml')
     
     # 默认地图路径
     default_map_yaml = os.path.join(slash_nav2_dir, 'map', 'test1.yaml')
@@ -108,7 +108,7 @@ def generate_launch_description():
         #   - navigation_launch.py (启动 controller_server, planner_server 等)
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(slash_nav2_dir, 'launch', 'bringup_launch.py')),
+                os.path.join(slash_nav2_dir, 'launch', 'bringup_slamtoolbox_launch.py')),
             launch_arguments={
                 'map': map_yaml,                    # 2D yaml 地图给 map_server (全局代价地图)
                 'map_posegraph': map_posegraph,     # posegraph 地图给 SLAM Toolbox (定位)

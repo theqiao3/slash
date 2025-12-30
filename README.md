@@ -39,6 +39,7 @@ X86 (N100)
 ## 概述
 
 本仓库实现了基于ROS2 Humble的机器人导航系统，适用于Ubuntu 22.04环境。系统集成了多种定位算法、规划算法和感知模块，支持多种传感器输入和导航模式。
+目前只有slam_toolbox的定位较准可用，但是slam_toolbox的依赖其基于2D scan自己构建的地图进行定位，在启动文件bringup_with_slam_toolbox.launch.py中，仅使用slam_toolbox构建的全局地图用于提供全局代价地图，其他文件使用fast_lio2构建的pcd转换后的栅格地图提供的全局代价地图。因为通过pcd转换的栅格代价地图程序中，对于机器人可通过的坡度地形进行了处理，使得其可以识别单层平面的所有可通过区域。slam_toolbox构建的地图并没有进行这些处理，只是使用转后的2D scan进行建图，在有的地形难以识别出可通过坡型，所以有使用pcd转换后的地图的必要。在bringup_slamtoolbox_launch.py中我们将两张地图同时加载，pcd转换后的地图用于生成全局代价地图，slam_toolbox生成的地图用于提供slam_toolbx定位使用，但是slam_toolbox和pcd转换后的地图同时加载有时会出现两张地图没有重合的情况，在导航时出现问题。如果可以修正amcl或dll的定位，便可以直接加载转换后的pcd地图生成全局代价地图，完成更稳定的3D导航。
 ![导航演示](image/test1.gif)
 ## 整体框架
 
@@ -115,6 +116,7 @@ X86 (N100)
 - **应用**: 地形导航、表面法向量、通行性等
 ![2.5D 高程图1](image/grid_map.png)
 ![2.5D 高程图2](image/grid_map2.png)
+
 	注：在目前的配置"bringup_gridmap_toolbox.launch.py”中，全局代价地图由pcd转pgm生成的全局静态地图生成，局部代价地图由grid_map层生成，pcd转pgm进行地图坡度高度处理，将可通过区域转换为非占用栅格，grid_map根据实时分割的障碍物点云生成，可识别可通过坡度区域（上图中紫色/蓝色区域）
 #### Linefit Ground Segmentation
 - **算法**: 基于线拟合的地面分割
